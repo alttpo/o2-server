@@ -38,7 +38,7 @@ type Client struct {
 	Group     string
 	ClientKey ClientKey
 	Index     uint16
-	Sector    uint32
+	Sector    uint64
 
 	LastSeen time.Time
 }
@@ -233,6 +233,8 @@ func processMessage(message UDPMessage) (fatalErr error) {
 		return processProtocol01(message, buf)
 	case 0x02:
 		return processProtocol02(message, buf)
+	case 0x03:
+		return processProtocol03(message, buf)
 	default:
 		log.Printf("unknown protocol 0x%02x\n", protocol)
 	}

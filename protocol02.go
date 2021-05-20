@@ -147,7 +147,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 		}
 
 		// join this client to the sector they're broadcasting to:
-		client.Sector = sector
+		client.Sector = uint64(sector)
 
 		// broadcast message:
 		payload := buf.Bytes()
@@ -156,7 +156,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 			if !c.IsAlive {
 				continue
 			}
-			if c.Sector != sector {
+			if c.Sector != uint64(sector) {
 				continue
 			}
 			if c == client {
