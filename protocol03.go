@@ -2,10 +2,21 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"github.com/alttpo/o2-server/p3"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
+
+func make03Packet() (buf *bytes.Buffer) {
+	// construct packet:
+	buf = &bytes.Buffer{}
+	header := uint16(25887)
+	binary.Write(buf, binary.LittleEndian, &header)
+	protocol := byte(0x03)
+	buf.WriteByte(protocol)
+	return
+}
 
 func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 	// parse message:
@@ -37,6 +48,8 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 	gm.PlayerIndex = uint32(ci)
 	gm.ServerTime = time.Now().UnixNano()
 
+	pkt := make03Packet()
+
 	if gm.GetJoinGroup() != nil {
 		// join player to group:
 		networkMetrics.ReceivedBytes(len(message.Envelope), "p3:joinGroup", clientGroup, client)
@@ -49,7 +62,8 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 		}
 
 		// send message back to client:
-		_, err = conn.WriteToUDP(rspBytes, &client.UDPAddr)
+		pkt.Write(rspBytes)
+		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
 		if err != nil {
 			return
 		}
@@ -76,7 +90,8 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			_, err = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			pkt.Write(rspBytes)
+			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
 			}
@@ -110,7 +125,8 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			_, err = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			pkt.Write(rspBytes)
+			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
 			}
@@ -119,6 +135,25 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 			//log.Printf("[group %s] (%v) sent message to (%v)\n", groupKey, client, other)
 		}
+	} else if ec := gm.GetEcho(); ec != nil {
+		// unknown or blank message
+		networkMetrics.ReceivedBytes(len(message.Envelope), "p3:echo", clientGroup, client)
+
+		// construct the broadcast message:
+		var rspBytes []byte
+		rspBytes, err = proto.Marshal(gm)
+		if err != nil {
+			return
+		}
+
+		// echo message to sender:
+		pkt.Write(rspBytes)
+		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
+		if err != nil {
+			return
+		}
+
+		networkMetrics.SentBytes(len(rspBytes), "p3:echo", clientGroup, client)
 	}
 
 	return
