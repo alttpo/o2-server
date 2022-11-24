@@ -24,8 +24,10 @@ message GroupMessage {
   uint32 playerIndex = 4;
   uint64 playerInSector = 5;
 
-  optional JoinGroup       joinGroup = 10;
-  optional BroadcastAll    broadcastAll = 11;
-  optional BroadcastSector broadcastSector = 12;
-  optional Echo            echo = 13;
+  oneof message {
+    JoinGroup       joinGroup = 10;
+    BroadcastAll    broadcastAll = 11;
+    BroadcastSector broadcastSector = 12;
+    Echo            echo = 13;
+  }
 }
