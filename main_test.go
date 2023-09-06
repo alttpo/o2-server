@@ -1,7 +1,13 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestMainFunc(t *testing.T) {
-	main()
+	go main()
+	tm := time.NewTimer(time.Second * 30)
+	<-tm.C
+	tm.Stop()
 }
