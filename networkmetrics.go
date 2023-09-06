@@ -25,7 +25,7 @@ func (m influxNetworkMetrics) ReceivedBytes(n int, kind string, group *ClientGro
 		SetTime(time.Now()).
 		AddTag("group", group.Group).
 		AddTag("group_anon", group.AnonymizedName).
-		AddTag("client", client.String()).
+		AddTag("client", client.AddrPort.String()).
 		AddTag("kind", kind).
 		AddField("received", n))
 }
@@ -35,7 +35,7 @@ func (m influxNetworkMetrics) SentBytes(n int, kind string, group *ClientGroup, 
 		SetTime(time.Now()).
 		AddTag("group", group.Group).
 		AddTag("group_anon", group.AnonymizedName).
-		AddTag("client", client.String()).
+		AddTag("client", client.AddrPort.String()).
 		AddTag("kind", kind).
 		AddField("sent", n))
 }

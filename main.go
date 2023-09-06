@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"net"
+	"net/netip"
 	"os"
 	"runtime"
 	"strings"
@@ -25,25 +26,17 @@ var (
 	listen = flag.String("listen", ":4590", "UDP address to listen on")
 )
 
-type ClientKey struct {
-	IP   [16]byte
-	Port int
-	Zone string // IPv6 scoped addressing zone
-}
-
 type Client struct {
-	net.UDPAddr
-
-	IsAlive   bool
-	Group     string
-	ClientKey ClientKey
-	Index     uint16
-	Sector    uint64
+	AddrPort netip.AddrPort
+	IsAlive  bool
+	Group    string
+	Index    uint16
+	Sector   uint64
 
 	LastSeen time.Time
 }
 
-//type ClientGroup map[ClientKey]*Client
+// type ClientGroup map[AddrPort]*Client
 type ClientGroup struct {
 	Group          string
 	AnonymizedName string
@@ -86,7 +79,7 @@ func readTinyString(buf *bytes.Buffer) (value string, err error) {
 
 type UDPMessage struct {
 	Envelope     []byte
-	ReceivedFrom *net.UDPAddr
+	ReceivedFrom netip.AddrPort
 }
 
 func reportGroupClients(group *ClientGroup) {
@@ -111,7 +104,7 @@ func getPackets(conn *net.UDPConn, messages chan<- UDPMessage) {
 
 	for {
 		// wait for a packet from UDP socket:
-		var n, addr, err = conn.ReadFromUDP(b)
+		var n, addr, err = conn.ReadFromUDPAddrPort(b)
 		if err != nil {
 			log.Print(err)
 			close(messages)
@@ -256,7 +249,7 @@ func expireClients(seconds time.Time) {
 			if c.LastSeen.Add(disconnectTimeout).Before(seconds) {
 				c.IsAlive = false
 				clientGroup.ActiveCount--
-				log.Printf("[group %s] (%v) forget client, clients=%d\n", groupKey, c, clientGroup.ActiveCount)
+				log.Printf("[group %s] (%s) forget client, clients=%d\n", groupKey, c.AddrPort.String(), clientGroup.ActiveCount)
 				reportTotalClients()
 			}
 		}
@@ -287,7 +280,7 @@ func generateAnonymizedName() string {
 		if r < 10 {
 			b[i] = byte('0') + byte(r)
 		} else {
-			b[i] = byte('a') + byte(r - 10)
+			b[i] = byte('a') + byte(r-10)
 		}
 	}
 	return string(b)
@@ -309,8 +302,13 @@ func findGroupOrCreate(groupKey string) *ClientGroup {
 	return clientGroup
 }
 
-func findClientOrCreate(clientGroup *ClientGroup, clientKey ClientKey, addr *net.UDPAddr, group string, groupKey string) (client *Client, ci int) {
-	// Find client in Clients array by ClientKey
+func findClientOrCreate(
+	clientGroup *ClientGroup,
+	addrPort netip.AddrPort,
+	group string,
+	groupKey string,
+) (client *Client, ci int) {
+	// Find client in Clients array by AddrPort
 	// Find first free slot to reuse
 	// Find total count of active clients
 	ci = -1
@@ -327,7 +325,7 @@ func findClientOrCreate(clientGroup *ClientGroup, clientKey ClientKey, addr *net
 		}
 
 		activeCount++
-		if c.ClientKey == clientKey {
+		if c.AddrPort == addrPort {
 			client = c
 			ci = i
 		}
@@ -353,16 +351,15 @@ func findClientOrCreate(clientGroup *ClientGroup, clientKey ClientKey, addr *net
 
 	// add this client to set of clients:
 	*client = Client{
-		UDPAddr:   *addr,
-		IsAlive:   true,
-		Group:     group,
-		ClientKey: clientKey,
-		Index:     uint16(free),
-		LastSeen:  time.Now(),
+		AddrPort: addrPort,
+		IsAlive:  true,
+		Group:    group,
+		Index:    uint16(free),
+		LastSeen: time.Now(),
 	}
 
 	clientGroup.ActiveCount++
-	log.Printf("[group %s] (%v) new client, clients=%d\n", groupKey, client, clientGroup.ActiveCount)
+	log.Printf("[group %s] (%s) new client, clients=%d\n", groupKey, client.AddrPort.String(), clientGroup.ActiveCount)
 	reportGroupClients(clientGroup)
 	reportTotalClients()
 

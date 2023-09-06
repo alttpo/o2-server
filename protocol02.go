@@ -73,14 +73,8 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 	clientGroup := findGroupOrCreate(groupKey)
 
 	// create a key that represents the client from the received address:
-	addr := message.ReceivedFrom
-	clientKey := ClientKey{
-		Port: addr.Port,
-		Zone: addr.Zone,
-	}
-	copy(clientKey.IP[:], addr.IP)
-
-	client, ci := findClientOrCreate(clientGroup, clientKey, addr, group, groupKey)
+	addrPort := message.ReceivedFrom
+	client, ci := findClientOrCreate(clientGroup, addrPort, group, groupKey)
 
 	// record number of bytes received:
 	networkMetrics.ReceivedBytes(len(message.Envelope), kind.String(), clientGroup, client)
@@ -98,7 +92,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 		// send message back to client:
 		rspBytes := rsp.Bytes()
-		_, fatalErr = conn.WriteToUDP(rspBytes, &client.UDPAddr)
+		_, fatalErr = conn.WriteToUDPAddrPort(rspBytes, client.AddrPort)
 		if fatalErr != nil {
 			return
 		}
@@ -129,7 +123,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 			// send message to this client:
 			rspBytes := rsp.Bytes()
-			_, fatalErr = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			_, fatalErr = conn.WriteToUDPAddrPort(rspBytes, c.AddrPort)
 			if fatalErr != nil {
 				return
 			}
@@ -173,7 +167,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 			// send message to this client:
 			rspBytes := rsp.Bytes()
-			_, fatalErr = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			_, fatalErr = conn.WriteToUDPAddrPort(rspBytes, c.AddrPort)
 			if fatalErr != nil {
 				return
 			}

@@ -38,14 +38,8 @@ func processProtocol01(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 	clientGroup := findGroupOrCreate(groupKey)
 
 	// create a key that represents the client from the received address:
-	addr := message.ReceivedFrom
-	clientKey := ClientKey{
-		Port: addr.Port,
-		Zone: addr.Zone,
-	}
-	copy(clientKey.IP[:], addr.IP)
-
-	client, ci := findClientOrCreate(clientGroup, clientKey, addr, group, groupKey)
+	addrPort := message.ReceivedFrom
+	client, ci := findClientOrCreate(clientGroup, addrPort, group, groupKey)
 
 	// record number of bytes received:
 	networkMetrics.ReceivedBytes(len(message.Envelope), "broadcast", clientGroup, client)
@@ -81,7 +75,7 @@ func processProtocol01(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 		// send message to this client:
 		bufBytes := buf.Bytes()
-		_, fatalErr = conn.WriteToUDP(bufBytes, &c.UDPAddr)
+		_, fatalErr = conn.WriteToUDPAddrPort(bufBytes, c.AddrPort)
 		if fatalErr != nil {
 			return
 		}

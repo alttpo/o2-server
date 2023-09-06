@@ -32,14 +32,8 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 	clientGroup := findGroupOrCreate(groupKey)
 
 	// create a key that represents the client from the received address:
-	addr := message.ReceivedFrom
-	clientKey := ClientKey{
-		Port: addr.Port,
-		Zone: addr.Zone,
-	}
-	copy(clientKey.IP[:], addr.IP)
-
-	client, ci := findClientOrCreate(clientGroup, clientKey, addr, group, groupKey)
+	addrPort := message.ReceivedFrom
+	client, ci := findClientOrCreate(clientGroup, addrPort, group, groupKey)
 
 	// update client's sector:
 	client.Sector = gm.PlayerInSector
@@ -63,7 +57,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 		// send message back to client:
 		pkt.Write(rspBytes)
-		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
+		_, err = conn.WriteToUDPAddrPort(pkt.Bytes(), client.AddrPort)
 		if err != nil {
 			return
 		}
@@ -91,7 +85,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 			// send message to this client:
 			pkt.Write(rspBytes)
-			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
+			_, err = conn.WriteToUDPAddrPort(pkt.Bytes(), c.AddrPort)
 			if err != nil {
 				return
 			}
@@ -126,7 +120,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 			// send message to this client:
 			pkt.Write(rspBytes)
-			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
+			_, err = conn.WriteToUDPAddrPort(pkt.Bytes(), c.AddrPort)
 			if err != nil {
 				return
 			}
@@ -148,7 +142,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 		// echo message to sender:
 		pkt.Write(rspBytes)
-		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
+		_, err = conn.WriteToUDPAddrPort(pkt.Bytes(), client.AddrPort)
 		if err != nil {
 			return
 		}
