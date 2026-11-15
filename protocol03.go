@@ -79,6 +79,9 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			return
 		}
 
+		// build the packet once for all recipients:
+		pkt.Write(rspBytes)
+
 		// iterate through all clients:
 		for i := range clientGroup.Clients {
 			c := &clientGroup.Clients[i]
@@ -90,7 +93,6 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			pkt.Write(rspBytes)
 			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
@@ -110,6 +112,9 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			return
 		}
 
+		// build the packet once for all recipients:
+		pkt.Write(rspBytes)
+
 		// iterate through all clients:
 		for i := range clientGroup.Clients {
 			c := &clientGroup.Clients[i]
@@ -125,7 +130,6 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			pkt.Write(rspBytes)
 			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
