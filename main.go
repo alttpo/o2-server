@@ -235,6 +235,8 @@ func processMessage(message UDPMessage) (fatalErr error) {
 		return processProtocol02(message, buf)
 	case 0x03:
 		return processProtocol03(message, buf)
+	case 0x04:
+		return processProtocol04(message, buf.Bytes())
 	default:
 		log.Printf("unknown protocol 0x%02x\n", protocol)
 	}
