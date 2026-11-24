@@ -56,6 +56,7 @@ var (
 	udpAddr      *net.UDPAddr
 	conn         *net.UDPConn
 	clientGroups map[string]*ClientGroup
+	p5           = newP5Server()
 )
 
 var (
@@ -179,6 +180,10 @@ func main() {
 	}
 
 	clientGroups = make(map[string]*ClientGroup)
+	p5.send = func(addr *net.UDPAddr, pkt []byte) error {
+		_, err := conn.WriteToUDP(pkt, addr)
+		return err
+	}
 
 	secondsTicker := time.Tick(time.Second * 5)
 
@@ -237,6 +242,8 @@ func processMessage(message UDPMessage) (fatalErr error) {
 		return processProtocol03(message, buf)
 	case 0x04:
 		return processProtocol04(message, buf.Bytes())
+	case p5Protocol:
+		p5.handle(message.ReceivedFrom, buf.Bytes())
 	default:
 		log.Printf("unknown protocol 0x%02x\n", protocol)
 	}
@@ -245,6 +252,8 @@ func processMessage(message UDPMessage) (fatalErr error) {
 }
 
 func expireClients(seconds time.Time) {
+	p5.expire()
+
 	// find all client groups with clients to expire in them:
 	for groupKey, clientGroup := range clientGroups {
 		// find all clients to be expired:
