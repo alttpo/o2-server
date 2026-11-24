@@ -173,6 +173,8 @@ type P5Join struct {
 	Group     string
 	Name      string
 	Info      []byte
+	// Auth is the optional auth field, see p5auth.go; empty for a group without a password:
+	Auth []byte
 }
 
 func p5DecodeJoin(body []byte) (j P5Join, err error) {
@@ -186,12 +188,19 @@ func p5DecodeJoin(body []byte) (j P5Join, err error) {
 		return j, r.err
 	}
 	j.Info = append([]byte(nil), info...)
+	if len(r.b) > 0 {
+		// older clients stop after the info:
+		j.Auth = append([]byte(nil), r.tiny()...)
+		if r.err != nil {
+			return j, r.err
+		}
+	}
 	return
 }
 
 // AppendP5Join encodes a join-group packet (used by tests and clients).
 func AppendP5Join(b []byte, j *P5Join) ([]byte, error) {
-	if len(j.Group) > 0xFF || len(j.Name) > 0xFF || len(j.Info) > 0xFF {
+	if len(j.Group) > 0xFF || len(j.Name) > 0xFF || len(j.Info) > 0xFF || len(j.Auth) > 0xFF {
 		return b, errP5TooLong
 	}
 	b = append(b, j.JoinSeq)
@@ -202,6 +211,10 @@ func AppendP5Join(b []byte, j *P5Join) ([]byte, error) {
 	b = append(b, j.Name...)
 	b = append(b, uint8(len(j.Info)))
 	b = append(b, j.Info...)
+	if len(j.Auth) > 0 {
+		b = append(b, uint8(len(j.Auth)))
+		b = append(b, j.Auth...)
+	}
 	return b, nil
 }
 

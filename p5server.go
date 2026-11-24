@@ -65,6 +65,8 @@ type p5Group struct {
 	// metrics identifies the group to the metrics reporters:
 	metrics *ClientGroup
 	Slots   []p5Slot
+	// AuthToken is the group's password token, nil for a group without a password, see p5auth.go:
+	AuthToken []byte
 	// facts of each session that joined the group, kept as long as the group lives:
 	Sessions  map[uint64]*p5Session
 	FactBytes int
@@ -270,6 +272,18 @@ func (s *p5Server) join(addr *net.UDPAddr, key ClientKey, j *P5Join) {
 	now := s.now()
 	groupKey := calcGroupKey(j.Group)
 
+	already := false
+	if ref, ok := s.byAddr[key]; ok && ref.groupKey == groupKey {
+		already = s.groups[groupKey].Slots[ref.index].SessionID == j.SessionID
+	}
+	var newToken []byte
+	if !already {
+		var ok bool
+		if ok, newToken = s.authorize(addr, j, groupKey); !ok {
+			return
+		}
+	}
+
 	if ref, ok := s.byAddr[key]; ok {
 		g := s.groups[ref.groupKey]
 		sl := &g.Slots[ref.index]
@@ -303,8 +317,9 @@ func (s *p5Server) join(addr *net.UDPAddr, key ClientKey, j *P5Join) {
 			metrics:  &ClientGroup{Group: groupKey, AnonymizedName: generateAnonymizedName()},
 			Sessions: make(map[uint64]*p5Session),
 		}
+		g.AuthToken = newToken
 		s.groups[groupKey] = g
-		log.Printf("p5: [group %s] new group\n", groupKey)
+		log.Printf("p5: [group %s] new group (password=%v)\n", groupKey, g.AuthToken != nil)
 		reportTotalGroups()
 	}
 
