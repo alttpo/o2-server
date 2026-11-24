@@ -95,11 +95,11 @@ func reportGroupClients(group *ClientGroup) {
 }
 
 func reportTotalGroups() {
-	groupMetrics.TotalGroups(len(clientGroups))
+	groupMetrics.TotalGroups(len(clientGroups) + len(p5.groups))
 }
 
 func reportTotalClients() {
-	totalClients := 0
+	totalClients := p5.liveCount()
 	for _, cg := range clientGroups {
 		totalClients += cg.ActiveCount
 	}
@@ -156,7 +156,9 @@ func main() {
 		writer := ifxClient.WriteAPI(ifxOrg, ifxBucket)
 		defer writer.Close()
 
-		networkMetrics = &influxNetworkMetrics{w: writer}
+		netMetrics := newInfluxNetworkMetrics(writer)
+		defer netMetrics.Close()
+		networkMetrics = netMetrics
 		clientMetrics = &influxClientMetrics{w: writer}
 		groupMetrics = &influxGroupMetrics{w: writer}
 	}
@@ -252,7 +254,13 @@ func processMessage(message UDPMessage) (fatalErr error) {
 }
 
 func expireClients(seconds time.Time) {
+	before := len(p5.groups)
 	p5.expire()
+	p5.reportGroups()
+	if len(p5.groups) != before {
+		reportTotalGroups()
+	}
+	reportTotalClients()
 
 	// find all client groups with clients to expire in them:
 	for groupKey, clientGroup := range clientGroups {

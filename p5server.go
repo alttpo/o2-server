@@ -61,8 +61,10 @@ type p5Slot struct {
 }
 
 type p5Group struct {
-	Key   string
-	Slots []p5Slot
+	Key string
+	// metrics identifies the group to the metrics reporters:
+	metrics *ClientGroup
+	Slots   []p5Slot
 	// facts of each session that joined the group, kept as long as the group lives:
 	Sessions  map[uint64]*p5Session
 	FactBytes int
@@ -112,6 +114,13 @@ func p5ClientKey(addr *net.UDPAddr) ClientKey {
 }
 
 func (s *p5Server) sendTo(addr *net.UDPAddr, pkt []byte) {
+	if len(pkt) > 3 {
+		if ref, ok := s.byAddr[p5ClientKey(addr)]; ok {
+			if g := s.groups[ref.groupKey]; g != nil {
+				networkMetrics.SentBytes(len(pkt), P5Kind(pkt[3]).String(), g.metrics, nil)
+			}
+		}
+	}
 	if err := s.send(addr, pkt); err != nil {
 		log.Printf("p5: (%v) send: %v\n", addr, err)
 	}
@@ -134,9 +143,13 @@ func (s *p5Server) handle(addr *net.UDPAddr, body []byte) {
 			return
 		}
 		s.join(addr, key, &j)
+		if ref, ok := s.byAddr[key]; ok {
+			networkMetrics.ReceivedBytes(len(body)+4, kind.String(), s.groups[ref.groupKey].metrics, nil)
+		}
 		return
 	case P5LeaveGroup:
-		if _, ok := s.byAddr[key]; ok {
+		if ref, ok := s.byAddr[key]; ok {
+			networkMetrics.ReceivedBytes(len(body)+4, kind.String(), s.groups[ref.groupKey].metrics, nil)
 			s.leave(key, P5LeftLeft)
 		}
 		return
@@ -155,6 +168,7 @@ func (s *p5Server) handle(addr *net.UDPAddr, body []byte) {
 	g := s.groups[ref.groupKey]
 	sl := &g.Slots[ref.index]
 	sl.LastSeen = s.now()
+	networkMetrics.ReceivedBytes(len(body)+4, kind.String(), g.metrics, nil)
 
 	r := &p5Reader{b: body}
 	switch kind {
@@ -284,9 +298,14 @@ func (s *p5Server) join(addr *net.UDPAddr, key ClientKey, j *P5Join) {
 
 	g, ok := s.groups[groupKey]
 	if !ok {
-		g = &p5Group{Key: groupKey, Sessions: make(map[uint64]*p5Session)}
+		g = &p5Group{
+			Key:      groupKey,
+			metrics:  &ClientGroup{Group: groupKey, AnonymizedName: generateAnonymizedName()},
+			Sessions: make(map[uint64]*p5Session),
+		}
 		s.groups[groupKey] = g
 		log.Printf("p5: [group %s] new group\n", groupKey)
+		reportTotalGroups()
 	}
 
 	idx, migrated, retaken := -1, false, false
@@ -614,5 +633,29 @@ func (s *p5Server) factGet(g *p5Group, addr *net.UDPAddr, index uint16, factNum 
 			s.sendTo(addr, pkt)
 		}
 		chunks >>= 1
+	}
+}
+
+// liveCount returns the number of live clients in every group.
+func (s *p5Server) liveCount() (n int) {
+	for _, g := range s.groups {
+		n += g.liveCount()
+	}
+	return
+}
+
+func (g *p5Group) liveCount() (n int) {
+	for i := range g.Slots {
+		if g.Slots[i].State == p5SlotLive {
+			n++
+		}
+	}
+	return
+}
+
+// reportGroups reports each group's live client count.
+func (s *p5Server) reportGroups() {
+	for _, g := range s.groups {
+		groupMetrics.GroupClients(g.metrics, g.liveCount())
 	}
 }
