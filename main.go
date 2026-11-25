@@ -176,14 +176,16 @@ func main() {
 	defer conn.Close()
 
 	log.Printf("listening on %s %s", network, udpAddr)
-	udpMessages := make(chan UDPMessage)
+	initLag()
+	received := make(chan UDPMessage)
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go getPackets(conn, udpMessages)
+		go getPackets(conn, received)
 	}
+	udpMessages := lagIn(received)
 
 	clientGroups = make(map[string]*ClientGroup)
 	p5.send = func(addr *net.UDPAddr, pkt []byte) error {
-		_, err := conn.WriteToUDP(pkt, addr)
+		_, err := writeToUDP(pkt, addr)
 		return err
 	}
 

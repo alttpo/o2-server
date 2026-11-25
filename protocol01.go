@@ -81,7 +81,7 @@ func processProtocol01(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 		// send message to this client:
 		bufBytes := buf.Bytes()
-		_, fatalErr = conn.WriteToUDP(bufBytes, &c.UDPAddr)
+		_, fatalErr = writeToUDP(bufBytes, &c.UDPAddr)
 		if fatalErr != nil {
 			return
 		}

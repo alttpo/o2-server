@@ -98,7 +98,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 		// send message back to client:
 		rspBytes := rsp.Bytes()
-		_, fatalErr = conn.WriteToUDP(rspBytes, &client.UDPAddr)
+		_, fatalErr = writeToUDP(rspBytes, &client.UDPAddr)
 		if fatalErr != nil {
 			return
 		}
@@ -129,7 +129,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 			// send message to this client:
 			rspBytes := rsp.Bytes()
-			_, fatalErr = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			_, fatalErr = writeToUDP(rspBytes, &c.UDPAddr)
 			if fatalErr != nil {
 				return
 			}
@@ -173,7 +173,7 @@ func processProtocol02(message UDPMessage, buf *bytes.Buffer) (fatalErr error) {
 
 			// send message to this client:
 			rspBytes := rsp.Bytes()
-			_, fatalErr = conn.WriteToUDP(rspBytes, &c.UDPAddr)
+			_, fatalErr = writeToUDP(rspBytes, &c.UDPAddr)
 			if fatalErr != nil {
 				return
 			}

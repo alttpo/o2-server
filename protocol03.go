@@ -63,7 +63,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 		// send message back to client:
 		pkt.Write(rspBytes)
-		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
+		_, err = writeToUDP(pkt.Bytes(), &client.UDPAddr)
 		if err != nil {
 			return
 		}
@@ -93,7 +93,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
+			_, err = writeToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
 			}
@@ -130,7 +130,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 			}
 
 			// send message to this client:
-			_, err = conn.WriteToUDP(pkt.Bytes(), &c.UDPAddr)
+			_, err = writeToUDP(pkt.Bytes(), &c.UDPAddr)
 			if err != nil {
 				return
 			}
@@ -152,7 +152,7 @@ func processProtocol03(message UDPMessage, buf *bytes.Buffer) (err error) {
 
 		// echo message to sender:
 		pkt.Write(rspBytes)
-		_, err = conn.WriteToUDP(pkt.Bytes(), &client.UDPAddr)
+		_, err = writeToUDP(pkt.Bytes(), &client.UDPAddr)
 		if err != nil {
 			return
 		}

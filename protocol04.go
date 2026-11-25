@@ -263,7 +263,7 @@ func processProtocol04(message UDPMessage, body []byte) (fatalErr error) {
 	}
 
 	sendTo := func(c *Client) error {
-		if _, err := conn.WriteToUDP(pkt, &c.UDPAddr); err != nil {
+		if _, err := writeToUDP(pkt, &c.UDPAddr); err != nil {
 			return err
 		}
 		networkMetrics.SentBytes(len(pkt), metric, clientGroup, client)
